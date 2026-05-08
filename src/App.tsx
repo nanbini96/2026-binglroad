@@ -77,7 +77,7 @@ export default function App() {
       return {
         icon: <Compass className="w-20 h-20 text-blue-500" />,
         title: "지금은 성장의\n'예비 항로'를 탐색 중!",
-        description: "현재 직무에서 탄탄한 기초를 다지고 있는 시기이군요~!\n당장 떠나지 않아도 괜찮습니다. 글로벌 인사이트는 멀리 있지 않아요.\n지난 빙글로드 연수 후기를 가볍게 읽어보는 것부터 시작해볼까요?",
+        description: "현재 직무에서 탄탄한 기초를 다지고 있는 시기이군요~!\n당장 떠나지 않아도 괜찮습니다. 글로벌 인사이트는 멀리 있지 않아요 :)\n지난 빙글로드 연수 후기를 가볍게 읽어보는 것부터 시작해볼까요?",
         ctas: ["동료 후기 확인", "지원 꿀팁 문의"],
         primaryUrl: reviewUrl
       };
@@ -85,7 +85,7 @@ export default function App() {
       return {
         icon: <Trophy className="w-20 h-20 text-amber-500" />,
         title: "훌륭한 '성장 엔진'이\n예열되었어요!",
-        description: "마음속에 성장을 향한 뜨거운 에너지가 느껴집니다.\n'내가 잘할 수 있을까?'라는 고민만 덜어낸다면\n당신은 어디서든 빛날 전문가입니다.\n동료들의 빙글로드 후기를 확인하며 용기를 얻어보세요!",
+        description: "마음 속에 성장을 향한 뜨거운 에너지가 느껴집니다.\n'내가 잘할 수 있을까?'라는 고민만 덜어낸다면\n당신은 어디서든 빛날 전문가입니다.\n동료들의 빙글로드 후기를 확인하며 용기를 얻어보세요!",
         ctas: ["동료 후기 확인", "지원 꿀팁 문의"],
         primaryUrl: reviewUrl
       };
