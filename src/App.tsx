@@ -3,8 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  doc, 
+  onSnapshot, 
+  setDoc, 
+  updateDoc, 
+  increment, 
+  getDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json';
 import { 
   ChevronRight, 
   ChevronLeft,
@@ -13,8 +25,13 @@ import {
   Compass,
   Trophy,
   Rocket,
-  RefreshCcw
+  RefreshCcw,
+  Users
 } from 'lucide-react';
+
+// --- Firebase Initialization ---
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // --- Constants & Data ---
 
@@ -33,6 +50,45 @@ const QUESTIONS = [
 
 // --- Components ---
 
+function DiagnosisCounter() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Real-time listener for the counter
+    const unsubscribe = onSnapshot(doc(db, 'counters', 'diagnosis_completions'), (docSnap) => {
+      if (docSnap.exists()) {
+        setCount(docSnap.data().count);
+      } else {
+        // Initialize if doesn't exist
+        setDoc(doc(db, 'counters', 'diagnosis_completions'), {
+          count: 1248, // Initial base count
+          updatedAt: serverTimestamp()
+        }).catch(err => console.error("Initialization error:", err));
+      }
+    }, (error) => {
+      console.error("Counter listener error:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (count === null) return null;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-100 shadow-sm flex items-center gap-2 pointer-events-auto"
+    >
+      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+      <Users size={14} className="text-slate-400" />
+      <span className="text-sm font-bold text-slate-600">
+        현재 <span className="text-indigo-600 font-black">{count.toLocaleString()}</span>명이 진단 완료
+      </span>
+    </motion.div>
+  );
+}
+
 export default function App() {
   const [step, setStep] = useState<'home' | 'quiz' | 'result'>('home');
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -50,6 +106,16 @@ export default function App() {
       setCurrentIdx(currentIdx + 1);
     } else {
       setStep('result');
+      // Increment counter in Firestore
+      const counterRef = doc(db, 'counters', 'diagnosis_completions');
+      updateDoc(counterRef, {
+        count: increment(1),
+        updatedAt: serverTimestamp()
+      }).catch(err => {
+        console.error("Increment error:", err);
+        // If document doesn't exist, try creating it (though onSnapshot should have handled it)
+        setDoc(counterRef, { count: 1249, updatedAt: serverTimestamp() }, { merge: true });
+      });
     }
   };
 
@@ -126,12 +192,12 @@ export default function App() {
         />
       </div>
 
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-50 p-6 flex justify-between items-center pointer-events-none">
-        <div />
-        
-        {/* Step Header removed as per request */}
-      </div>
+      {/* Counter */}
+      {step === 'home' && (
+        <div className="fixed top-0 left-0 z-50 p-6 pointer-events-none">
+          <DiagnosisCounter />
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {/* --- Home Scene --- */}

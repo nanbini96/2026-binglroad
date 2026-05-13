@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "Counter": {
+      "title": "Counter",
+      "description": "A simple counter for tracking events",
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer",
+          "description": "The current count value"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the counter was updated"
+        }
+      },
+      "required": ["count", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "counters/diagnosis_completions": {
+      "schema": "Counter",
+      "description": "Tracks the total number of completed diagnoses"
+    }
+  }
+}

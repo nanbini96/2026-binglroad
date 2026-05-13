@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Counter helpers
+    function isValidCounter(data) {
+      return data.count is int && 
+             data.count >= 0 &&
+             data.updatedAt is timestamp;
+    }
+
+    match /counters/diagnosis_completions {
+      allow read: if true;
+      allow update: if isValidCounter(request.resource.data) &&
+                      request.resource.data.count == resource.data.count + 1 &&
+                      request.resource.data.updatedAt == request.time;
+      // Allow creation if it doesn't exist (initialization)
+      allow create: if isValidCounter(request.resource.data) &&
+                      request.resource.data.count == 1 &&
+                      request.resource.data.updatedAt == request.time;
+    }
+  }
+}
