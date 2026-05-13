@@ -31,7 +31,44 @@ import {
 
 // --- Firebase Initialization ---
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: null, // Add actual auth logic if needed
+      email: null,
+      emailVerified: null,
+      isAnonymous: null,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  // Not throwing here to allow the app to keep running but log to console
+}
 
 // --- Constants & Data ---
 
@@ -64,16 +101,14 @@ function DiagnosisCounter() {
     const unsubscribe = onSnapshot(counterDoc, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log("Completions data received:", data);
         const val = data.count;
         setCount(val);
         sessionStorage.setItem('diagnosis_count', val.toString());
       } else {
-        console.log("Completions doc does not exist, pending first completion...");
         setCount(0);
       }
     }, (error) => {
-      console.error("Counter listener error:", error);
+      handleFirestoreError(error, OperationType.GET, 'counters/diagnosis_completions');
     });
 
     return () => unsubscribe();
@@ -145,9 +180,10 @@ export default function App() {
         count: increment(1),
         updatedAt: serverTimestamp()
       }).catch(err => {
-        console.error("Increment error:", err);
+        handleFirestoreError(err, OperationType.UPDATE, 'counters/diagnosis_completions');
         // If document doesn't exist, try creating it
-        setDoc(counterRef, { count: 1, updatedAt: serverTimestamp() }, { merge: true });
+        setDoc(counterRef, { count: 1, updatedAt: serverTimestamp() }, { merge: true })
+          .catch(e => handleFirestoreError(e, OperationType.WRITE, 'counters/diagnosis_completions'));
       });
     }
   };
