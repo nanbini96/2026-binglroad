@@ -54,14 +54,14 @@ function DiagnosisCounter() {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
-    // Real-time listener for the counter
-    const unsubscribe = onSnapshot(doc(db, 'counters', 'diagnosis_completions'), (docSnap) => {
+    // Real-time listener for the visitors counter
+    const unsubscribe = onSnapshot(doc(db, 'counters', 'total_visitors'), (docSnap) => {
       if (docSnap.exists()) {
         setCount(docSnap.data().count);
       } else {
         // Initialize if doesn't exist
-        setDoc(doc(db, 'counters', 'diagnosis_completions'), {
-          count: 1248, // Initial base count
+        setDoc(doc(db, 'counters', 'total_visitors'), {
+          count: 1, // Start with 1 for the first visitor
           updatedAt: serverTimestamp()
         }).catch(err => console.error("Initialization error:", err));
       }
@@ -83,7 +83,7 @@ function DiagnosisCounter() {
       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
       <Users size={14} className="text-slate-400" />
       <span className="text-sm font-bold text-slate-600">
-        현재 <span className="text-indigo-600 font-black">{count.toLocaleString()}</span>명이 진단 완료
+        현재 <span className="text-indigo-600 font-black">{count.toLocaleString()}</span>명이 참여 중
       </span>
     </motion.div>
   );
@@ -96,6 +96,24 @@ export default function App() {
   const [direction, setDirection] = useState(0);
   const [showContactInfo, setShowContactInfo] = useState(false);
 
+  useEffect(() => {
+    // Increment visitors count on mount
+    const visitorsRef = doc(db, 'counters', 'total_visitors');
+    getDoc(visitorsRef).then((snap) => {
+      if (snap.exists()) {
+        updateDoc(visitorsRef, {
+          count: increment(1),
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        setDoc(visitorsRef, {
+          count: 1,
+          updatedAt: serverTimestamp()
+        });
+      }
+    });
+  }, []);
+
   const handleNext = (val: boolean) => {
     const updatedAnswers = [...answers];
     updatedAnswers[currentIdx] = val;
@@ -106,15 +124,15 @@ export default function App() {
       setCurrentIdx(currentIdx + 1);
     } else {
       setStep('result');
-      // Increment counter in Firestore
+      // Increment completion counter in Firestore
       const counterRef = doc(db, 'counters', 'diagnosis_completions');
       updateDoc(counterRef, {
         count: increment(1),
         updatedAt: serverTimestamp()
       }).catch(err => {
         console.error("Increment error:", err);
-        // If document doesn't exist, try creating it (though onSnapshot should have handled it)
-        setDoc(counterRef, { count: 1249, updatedAt: serverTimestamp() }, { merge: true });
+        // If document doesn't exist, try creating it
+        setDoc(counterRef, { count: 1, updatedAt: serverTimestamp() }, { merge: true });
       });
     }
   };

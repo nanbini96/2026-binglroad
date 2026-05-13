@@ -15,13 +15,14 @@ service cloud.firestore {
 
     match /counters/diagnosis_completions {
       allow read: if true;
-      allow update: if isValidCounter(request.resource.data) &&
-                      request.resource.data.count == resource.data.count + 1 &&
-                      request.resource.data.updatedAt == request.time;
-      // Allow creation if it doesn't exist (initialization)
-      allow create: if isValidCounter(request.resource.data) &&
-                      request.resource.data.count == 1 &&
-                      request.resource.data.updatedAt == request.time;
+      allow update, create: if isValidCounter(request.resource.data) &&
+                           request.resource.data.updatedAt == request.time;
+    }
+
+    match /counters/total_visitors {
+      allow read: if true;
+      allow update, create: if isValidCounter(request.resource.data) &&
+                           request.resource.data.updatedAt == request.time;
     }
   }
 }
