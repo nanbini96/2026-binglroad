@@ -123,7 +123,7 @@ function DiagnosisCounter() {
       <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
       <Users size={14} className="text-indigo-500" />
       <span className="text-sm font-bold text-slate-800">
-        현재 <span className="text-indigo-600 font-black">{count !== null ? count.toLocaleString() : '...'}</span>명이 진단 완료
+        현재 <span className="text-indigo-600 font-black">{count !== null ? count.toLocaleString() : '...'}</span>명이 진단 완료(집계중)
       </span>
     </motion.div>
   );
