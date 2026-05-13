@@ -1,35 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
+    match /counters/{counterId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     match /{document=**} {
       allow read, write: if false;
-    }
-
-    // Helper functions
-    function isValidId(id) {
-      return id is string && id.size() <= 128;
-    }
-
-    function isValidCounter(data) {
-      return data.keys().hasAll(['count', 'updatedAt']) &&
-             data.count is int && 
-             data.count >= 0 &&
-             data.updatedAt is timestamp;
-    }
-
-    // Counters collection
-    match /counters/{counterId} {
-      allow read: if isValidId(counterId);
-      
-      allow create: if isValidId(counterId) && 
-                      isValidCounter(request.resource.data) &&
-                      request.resource.data.updatedAt == request.time;
-      
-      allow update: if isValidId(counterId) &&
-                      isValidCounter(request.resource.data) &&
-                      request.resource.data.updatedAt == request.time &&
-                      (resource == null || request.resource.data.count == resource.data.count + 1);
     }
   }
 }

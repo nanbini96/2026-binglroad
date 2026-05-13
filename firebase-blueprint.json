@@ -22,6 +22,10 @@
     "counters/diagnosis_completions": {
       "schema": "Counter",
       "description": "Tracks the total number of completed diagnoses"
+    },
+    "counters/total_visitors": {
+      "schema": "Counter",
+      "description": "Tracks the total number of unique/session visitors"
     }
   }
 }

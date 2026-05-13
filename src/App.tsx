@@ -122,10 +122,12 @@ function DiagnosisCounter() {
         setCount(val);
         sessionStorage.setItem('diagnosis_count', val.toString());
       } else {
+        console.log("Counter document does not exist, setting count to 0");
         setCount(0);
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'counters/diagnosis_completions');
+      console.error("Firestore Counter Error:", error);
+      // Don't throw here to avoid breaking the UI, just show null/...
     });
 
     return () => unsubscribe();
@@ -175,7 +177,7 @@ export default function App() {
           console.log("Visitor count initialized to 1");
         }
       } catch (err) {
-        console.error("Visitor count tracking error:", err);
+        handleFirestoreError(err, OperationType.WRITE, 'counters/total_visitors');
       }
     };
 
