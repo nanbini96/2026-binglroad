@@ -14,7 +14,8 @@ import {
   updateDoc, 
   increment, 
   getDoc,
-  serverTimestamp 
+  serverTimestamp,
+  getDocFromServer 
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { 
@@ -32,6 +33,22 @@ import {
 // --- Firebase Initialization ---
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Validate connection to Firestore
+async function testConnection() {
+  try {
+    // Only testing read access to counters/test_connection
+    await getDocFromServer(doc(db, 'counters', 'test_connection'));
+    console.log("Firestore connection verified.");
+  } catch (error) {
+    if(error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration: client is offline.");
+    } else {
+      console.log("Firestore connection test status:", error);
+    }
+  }
+}
+testConnection();
 
 enum OperationType {
   CREATE = 'create',
@@ -135,6 +152,7 @@ export default function App() {
   const [answers, setAnswers] = useState<boolean[]>([]);
   const [direction, setDirection] = useState(0);
   const [showContactInfo, setShowContactInfo] = useState(false);
+  const [showAdminCounter, setShowAdminCounter] = useState(false);
 
   useEffect(() => {
     // Increment visitors count on mount
@@ -549,9 +567,21 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Diagnosis Counter - Global Overlay */}
-      <div className="fixed top-0 left-0 z-[100] p-6 pointer-events-none">
-        <DiagnosisCounter />
+      {/* Diagnosis Counter - Only visible for Admin toggle */}
+      {showAdminCounter && (
+        <div className="fixed top-0 left-0 z-[100] p-6 pointer-events-none">
+          <DiagnosisCounter />
+        </div>
+      )}
+
+      {/* Admin Button at the bottom */}
+      <div className="fixed bottom-0 left-0 w-full flex justify-center p-2 z-[90] pointer-events-none">
+        <button 
+          onClick={() => setShowAdminCounter(!showAdminCounter)}
+          className="pointer-events-auto bg-transparent hover:bg-slate-50 text-slate-200 hover:text-slate-400 text-[8px] px-2 py-1 rounded transition-all tracking-tighter"
+        >
+          ADMIN
+        </button>
       </div>
 
       {/* Floating Sparkle Elements removed as per request */}

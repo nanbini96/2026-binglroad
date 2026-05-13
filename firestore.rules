@@ -6,23 +6,30 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Counter helpers
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
     function isValidCounter(data) {
-      return data.count is int && 
+      return data.keys().hasAll(['count', 'updatedAt']) &&
+             data.count is int && 
              data.count >= 0 &&
              data.updatedAt is timestamp;
     }
 
-    match /counters/diagnosis_completions {
-      allow read: if true;
-      allow update, create: if isValidCounter(request.resource.data) &&
-                           request.resource.data.updatedAt == request.time;
-    }
-
-    match /counters/total_visitors {
-      allow read: if true;
-      allow update, create: if isValidCounter(request.resource.data) &&
-                           request.resource.data.updatedAt == request.time;
+    // Counters collection
+    match /counters/{counterId} {
+      allow read: if isValidId(counterId);
+      
+      allow create: if isValidId(counterId) && 
+                      isValidCounter(request.resource.data) &&
+                      request.resource.data.updatedAt == request.time;
+      
+      allow update: if isValidId(counterId) &&
+                      isValidCounter(request.resource.data) &&
+                      request.resource.data.updatedAt == request.time &&
+                      (resource == null || request.resource.data.count == resource.data.count + 1);
     }
   }
 }
