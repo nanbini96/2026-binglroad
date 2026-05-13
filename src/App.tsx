@@ -51,19 +51,26 @@ const QUESTIONS = [
 // --- Components ---
 
 function DiagnosisCounter() {
-  const [count, setCount] = useState<number | null>(null);
+  const [count, setCount] = useState<number | null>(() => {
+    // Try to get cached count to avoid loading state flicker
+    const cached = sessionStorage.getItem('diagnosis_count');
+    return cached ? parseInt(cached, 10) : null;
+  });
 
   useEffect(() => {
-    // Real-time listener for the visitors counter
-    const unsubscribe = onSnapshot(doc(db, 'counters', 'total_visitors'), (docSnap) => {
+    console.log("Starting DiagnosisCounter listener (Completions)...");
+    const counterDoc = doc(db, 'counters', 'diagnosis_completions');
+    
+    const unsubscribe = onSnapshot(counterDoc, (docSnap) => {
       if (docSnap.exists()) {
-        setCount(docSnap.data().count);
+        const data = docSnap.data();
+        console.log("Completions data received:", data);
+        const val = data.count;
+        setCount(val);
+        sessionStorage.setItem('diagnosis_count', val.toString());
       } else {
-        // Initialize if doesn't exist
-        setDoc(doc(db, 'counters', 'total_visitors'), {
-          count: 1, // Start with 1 for the first visitor
-          updatedAt: serverTimestamp()
-        }).catch(err => console.error("Initialization error:", err));
+        console.log("Completions doc does not exist, pending first completion...");
+        setCount(0);
       }
     }, (error) => {
       console.error("Counter listener error:", error);
@@ -72,18 +79,16 @@ function DiagnosisCounter() {
     return () => unsubscribe();
   }, []);
 
-  if (count === null) return null;
-
   return (
     <motion.div 
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white/80 backdrop-blur-md px-4 py-2 rounded-full border border-slate-100 shadow-sm flex items-center gap-2 pointer-events-auto"
+      className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full border border-indigo-200 shadow-xl flex items-center gap-2 pointer-events-auto"
     >
-      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-      <Users size={14} className="text-slate-400" />
-      <span className="text-sm font-bold text-slate-600">
-        현재 <span className="text-indigo-600 font-black">{count.toLocaleString()}</span>명이 참여 중
+      <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+      <Users size={14} className="text-indigo-500" />
+      <span className="text-sm font-bold text-slate-800">
+        현재 <span className="text-indigo-600 font-black">{count !== null ? count.toLocaleString() : '...'}</span>명이 진단 완료
       </span>
     </motion.div>
   );
@@ -99,19 +104,29 @@ export default function App() {
   useEffect(() => {
     // Increment visitors count on mount
     const visitorsRef = doc(db, 'counters', 'total_visitors');
-    getDoc(visitorsRef).then((snap) => {
-      if (snap.exists()) {
-        updateDoc(visitorsRef, {
-          count: increment(1),
-          updatedAt: serverTimestamp()
-        });
-      } else {
-        setDoc(visitorsRef, {
-          count: 1,
-          updatedAt: serverTimestamp()
-        });
+    
+    const incrementVisitor = async () => {
+      try {
+        const snap = await getDoc(visitorsRef);
+        if (snap.exists()) {
+          await updateDoc(visitorsRef, {
+            count: increment(1),
+            updatedAt: serverTimestamp()
+          });
+          console.log("Visitor count incremented");
+        } else {
+          await setDoc(visitorsRef, {
+            count: 1,
+            updatedAt: serverTimestamp()
+          });
+          console.log("Visitor count initialized to 1");
+        }
+      } catch (err) {
+        console.error("Visitor count tracking error:", err);
       }
-    });
+    };
+
+    incrementVisitor();
   }, []);
 
   const handleNext = (val: boolean) => {
@@ -209,13 +224,6 @@ export default function App() {
           className="absolute -bottom-1/4 -left-1/4 w-[60vw] h-[60vw] bg-pink-100 rounded-full blur-[80px]"
         />
       </div>
-
-      {/* Counter */}
-      {step === 'home' && (
-        <div className="fixed top-0 left-0 z-50 p-6 pointer-events-none">
-          <DiagnosisCounter />
-        </div>
-      )}
 
       <AnimatePresence mode="wait">
         {/* --- Home Scene --- */}
@@ -504,6 +512,11 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Diagnosis Counter - Global Overlay */}
+      <div className="fixed top-0 left-0 z-[100] p-6 pointer-events-none">
+        <DiagnosisCounter />
+      </div>
 
       {/* Floating Sparkle Elements removed as per request */}
     </div>
