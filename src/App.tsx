@@ -230,7 +230,7 @@ export default function App() {
       return {
         icon: <Compass className="w-20 h-20 text-blue-500" />,
         title: "지금은 성장의\n'예비 항로'를 탐색 중!",
-        description: "현재 직무에서 탄탄한 기초를 다지고 있는 시기이군요~!\n당장 떠나지 않아도 괜찮습니다. 글로벌 인사이트는 멀리 있지 않아요 :)\n지난 빙글로드 연수 후기를 가볍게 읽어보는 것부터 시작해볼까요?",
+        description: "현재 직무에서 탄탄한 역량을 다지고 있는 시기이군요~!\n당장 떠나지 않아도 괜찮습니다. 글로벌 인사이트는 멀리 있지 않아요 :)\n지난 빙글로드 연수 후기를 가볍게 읽어보는 것부터 시작해볼까요?",
         ctas: ["동료 후기 확인", "지원 꿀팁 문의"],
         primaryUrl: reviewUrl
       };
