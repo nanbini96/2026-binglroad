@@ -104,46 +104,67 @@ const QUESTIONS = [
 
 // --- Components ---
 
-function DiagnosisCounter() {
-  const [count, setCount] = useState<number | null>(() => {
-    // Try to get cached count to avoid loading state flicker
-    const cached = sessionStorage.getItem('diagnosis_count');
-    return cached ? parseInt(cached, 10) : null;
-  });
+function AdminStats() {
+  const [completions, setCompletions] = useState<number | null>(null);
+  const [visitors, setVisitors] = useState<number | null>(null);
 
   useEffect(() => {
-    console.log("Starting DiagnosisCounter listener (Completions)...");
-    const counterDoc = doc(db, 'counters', 'diagnosis_completions');
+    const completionsDoc = doc(db, 'counters', 'diagnosis_completions');
+    const visitorsDoc = doc(db, 'counters', 'total_visitors');
     
-    const unsubscribe = onSnapshot(counterDoc, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const val = data.count;
-        setCount(val);
-        sessionStorage.setItem('diagnosis_count', val.toString());
-      } else {
-        console.log("Counter document does not exist, setting count to 0");
-        setCount(0);
-      }
-    }, (error) => {
-      console.error("Firestore Counter Error:", error);
-      // Don't throw here to avoid breaking the UI, just show null/...
+    const unsubCompletions = onSnapshot(completionsDoc, (snap) => {
+      if (snap.exists()) setCompletions(snap.data().count);
     });
 
-    return () => unsubscribe();
+    const unsubVisitors = onSnapshot(visitorsDoc, (snap) => {
+      if (snap.exists()) setVisitors(snap.data().count);
+    });
+
+    return () => {
+      unsubCompletions();
+      unsubVisitors();
+    };
   }, []);
 
   return (
     <motion.div 
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full border border-indigo-200 shadow-xl flex items-center gap-2 pointer-events-auto"
+      className="bg-white/95 backdrop-blur-md px-6 py-4 rounded-3xl border border-indigo-200 shadow-2xl flex flex-col gap-3 pointer-events-auto min-w-[200px]"
     >
-      <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
-      <Users size={14} className="text-indigo-500" />
-      <span className="text-sm font-bold text-slate-800">
-        현재 <span className="text-indigo-600 font-black">{count !== null ? count.toLocaleString() : '...'}</span>명이 진단 완료(집계중)
-      </span>
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-2 mb-1">
+        <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+        <span className="text-xs font-black text-indigo-600 uppercase tracking-wider">Admin Live Stats</span>
+      </div>
+      
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Users size={16} className="text-slate-400" />
+          <span className="text-sm font-bold text-slate-600">누적 방문자</span>
+        </div>
+        <span className="text-lg font-black text-slate-900">
+          {visitors !== null ? visitors.toLocaleString() : '...'}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Trophy size={16} className="text-indigo-500" />
+          <span className="text-sm font-bold text-slate-600">진단 완료</span>
+        </div>
+        <span className="text-lg font-black text-indigo-600">
+          {completions !== null ? completions.toLocaleString() : '...'}
+        </span>
+      </div>
+
+      {visitors && completions && (
+        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Completion Rate</span>
+          <span className="text-xs font-black text-emerald-600">
+            {((completions / visitors) * 100).toFixed(1)}%
+          </span>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -161,6 +182,9 @@ export default function App() {
     const visitorsRef = doc(db, 'counters', 'total_visitors');
     
     const incrementVisitor = async () => {
+      // Use sessionStorage to prevent double-counting in the same session
+      if (sessionStorage.getItem('visitor_counted')) return;
+
       try {
         const snap = await getDoc(visitorsRef);
         if (snap.exists()) {
@@ -176,7 +200,10 @@ export default function App() {
           });
           console.log("Visitor count initialized to 1");
         }
+        sessionStorage.setItem('visitor_counted', 'true');
       } catch (err) {
+        // Log error but don't break the app
+        console.error("Critical: Visitor tracking failed", err);
         handleFirestoreError(err, OperationType.WRITE, 'counters/total_visitors');
       }
     };
@@ -184,7 +211,7 @@ export default function App() {
     incrementVisitor();
   }, []);
 
-  const handleNext = (val: boolean) => {
+  const handleNext = async (val: boolean) => {
     const updatedAnswers = [...answers];
     updatedAnswers[currentIdx] = val;
     setAnswers(updatedAnswers);
@@ -196,15 +223,23 @@ export default function App() {
       setStep('result');
       // Increment completion counter in Firestore
       const counterRef = doc(db, 'counters', 'diagnosis_completions');
-      updateDoc(counterRef, {
-        count: increment(1),
-        updatedAt: serverTimestamp()
-      }).catch(err => {
-        handleFirestoreError(err, OperationType.UPDATE, 'counters/diagnosis_completions');
-        // If document doesn't exist, try creating it
-        setDoc(counterRef, { count: 1, updatedAt: serverTimestamp() }, { merge: true })
-          .catch(e => handleFirestoreError(e, OperationType.WRITE, 'counters/diagnosis_completions'));
-      });
+      try {
+        const snap = await getDoc(counterRef);
+        if (snap.exists()) {
+          await updateDoc(counterRef, {
+            count: increment(1),
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          await setDoc(counterRef, {
+            count: 1,
+            updatedAt: serverTimestamp()
+          });
+        }
+      } catch (err) {
+        console.error("Critical: Completion tracking failed", err);
+        handleFirestoreError(err, OperationType.WRITE, 'counters/diagnosis_completions');
+      }
     }
   };
 
@@ -572,7 +607,7 @@ export default function App() {
       {/* Diagnosis Counter - Only visible for Admin toggle */}
       {showAdminCounter && (
         <div className="fixed top-0 left-0 z-[100] p-6 pointer-events-none">
-          <DiagnosisCounter />
+          <AdminStats />
         </div>
       )}
 
